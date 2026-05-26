@@ -10,11 +10,13 @@ import type { Channel, NotificationType } from '../../domain/types.js';
 export class PreferencesRepository {
   constructor(private readonly pool: pg.Pool) {}
 
-  async ensureUser(userId: string): Promise<void> {
-    await this.pool.query(
-      `INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING`,
+  /** @returns true when the user row was created (first access) */
+  async ensureUser(userId: string): Promise<boolean> {
+    const res = await this.pool.query(
+      `INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING RETURNING id`,
       [userId],
     );
+    return (res.rowCount ?? 0) > 0;
   }
 
   async userExists(userId: string): Promise<boolean> {

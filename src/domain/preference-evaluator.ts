@@ -1,3 +1,4 @@
+import { parseIsoInstant } from './datetime.js';
 import { typesMatchChannel } from './notification-meta.js';
 import { isQuietHoursApplicable, isWithinQuietHours } from './quiet-hours.js';
 import type {
@@ -6,11 +7,28 @@ import type {
   EvaluateResult,
   GlobalPolicy,
   PreferenceEntry,
+  PreferenceEntryWithSource,
   QuietHours,
 } from './types.js';
 
+/**
+ * Business rule evaluation order (assignment §3):
+ * 1. User must exist
+ * 2. notificationType ↔ channel consistency
+ * 3. Global policy (type + channel + region) — overrides user/default
+ * 4. Effective preference (user override > default)
+ * 5. Quiet hours in user's timezone — only if step 4 allowed send
+ */
+export const EVALUATION_RULE_ORDER = [
+  'user_exists',
+  'type_channel_match',
+  'global_policy',
+  'effective_preference',
+  'quiet_hours',
+] as const;
+
 export interface EvaluationContext {
-  preferences: PreferenceEntry[];
+  preferences: PreferenceEntryWithSource[];
   quietHours: QuietHours | null;
   globalPolicies: GlobalPolicy[];
   userExists: boolean;
@@ -48,14 +66,15 @@ export function evaluateNotification(
   );
 
   if (!pref?.enabled) {
-    const reason: DenyReason = pref
-      ? 'disabled_by_user_preference'
-      : 'disabled_by_default';
+    const reason: DenyReason =
+      pref?.source === 'user'
+        ? 'disabled_by_user_preference'
+        : 'disabled_by_default';
     return { decision: 'deny', reason };
   }
 
   if (context.quietHours) {
-    const instant = new Date(request.datetime);
+    const instant = parseIsoInstant(request.datetime);
     if (
       isQuietHoursApplicable(request.notificationType, context.quietHours) &&
       isWithinQuietHours(
@@ -90,13 +109,24 @@ export function mergePreferencesWithDefaults(
   defaults: PreferenceEntry[],
   overrides: PreferenceEntry[],
 ): PreferenceEntry[] {
-  const map = new Map<string, PreferenceEntry>();
+  return mergePreferencesWithSources(defaults, overrides).map(
+    ({ source: _s, ...entry }) => entry,
+  );
+}
+
+export function mergePreferencesWithSources(
+  defaults: PreferenceEntry[],
+  overrides: PreferenceEntry[],
+): PreferenceEntryWithSource[] {
+  const map = new Map<string, PreferenceEntryWithSource>();
+
   for (const d of defaults) {
-    map.set(key(d), { ...d });
+    map.set(key(d), { ...d, source: 'default' });
   }
   for (const o of overrides) {
-    map.set(key(o), { ...o });
+    map.set(key(o), { ...o, source: 'user' });
   }
+
   return Array.from(map.values());
 }
 

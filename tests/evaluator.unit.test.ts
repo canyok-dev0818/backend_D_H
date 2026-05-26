@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateNotification } from '../src/domain/preference-evaluator.js';
+import {
+  evaluateNotification,
+  mergePreferencesWithSources,
+} from '../src/domain/preference-evaluator.js';
 import type { PreferenceEntry } from '../src/domain/types.js';
 
 const enabledDefaults: PreferenceEntry[] = [
@@ -9,6 +12,9 @@ const enabledDefaults: PreferenceEntry[] = [
 
 describe('preference evaluator (unit)', () => {
   it('applies global policy before user preference', () => {
+    const preferences = mergePreferencesWithSources(enabledDefaults, [
+      { notificationType: 'marketing_sms', channel: 'sms', enabled: true },
+    ]);
     const result = evaluateNotification(
       {
         userId: 'u1',
@@ -19,10 +25,7 @@ describe('preference evaluator (unit)', () => {
       },
       {
         userExists: true,
-        preferences: [
-          ...enabledDefaults,
-          { notificationType: 'marketing_sms', channel: 'sms', enabled: true },
-        ],
+        preferences,
         quietHours: null,
         globalPolicies: [
           {

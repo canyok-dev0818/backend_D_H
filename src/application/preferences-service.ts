@@ -1,7 +1,11 @@
-import { mergePreferencesWithDefaults, evaluateNotification } from '../domain/preference-evaluator.js';
+import {
+  mergePreferencesWithSources,
+  evaluateNotification,
+} from '../domain/preference-evaluator.js';
 import type {
   EvaluateRequest,
   EvaluateResult,
+  GlobalPolicy,
   PreferenceEntry,
   QuietHours,
   UpdatePreferencesCommand,
@@ -16,12 +20,23 @@ export class PreferencesService {
     private readonly logger: Logger,
   ) {}
 
+  async getDefaultPreferences(): Promise<PreferenceEntry[]> {
+    return this.repo.getDefaultPreferences();
+  }
+
+  async getGlobalPolicies(): Promise<GlobalPolicy[]> {
+    return this.repo.getGlobalPolicies();
+  }
+
   async getUserPreferences(userId: string): Promise<UserPreferencesSnapshot> {
-    await this.repo.ensureUser(userId);
+    const isNewUser = await this.repo.ensureUser(userId);
+    if (isNewUser) {
+      this.logger.info('New user created with default preferences', { userId });
+    }
     const defaults = await this.repo.getDefaultPreferences();
     const overrides = await this.repo.getUserPreferenceOverrides(userId);
     const quietHours = await this.repo.getUserQuietHours(userId);
-    const preferences = mergePreferencesWithDefaults(defaults, overrides);
+    const preferences = mergePreferencesWithSources(defaults, overrides);
     return { userId, preferences, quietHours };
   }
 
@@ -30,7 +45,10 @@ export class PreferencesService {
     command: UpdatePreferencesCommand,
     idempotencyKey: string,
   ): Promise<UserPreferencesSnapshot> {
-    await this.repo.ensureUser(userId);
+    const isNewUser = await this.repo.ensureUser(userId);
+    if (isNewUser) {
+      this.logger.info('New user created with default preferences', { userId });
+    }
 
     const alreadyApplied = await this.repo.wasCommandApplied(
       userId,
@@ -75,20 +93,24 @@ export class PreferencesService {
   }
 
   async evaluate(request: EvaluateRequest): Promise<EvaluateResult> {
-    const userExists = await this.repo.userExists(request.userId);
+    const isNewUser = await this.repo.ensureUser(request.userId);
+    if (isNewUser) {
+      this.logger.info('New user created with default preferences', {
+        userId: request.userId,
+      });
+    }
+
     const defaults = await this.repo.getDefaultPreferences();
     const overrides = await this.repo.getUserPreferenceOverrides(request.userId);
-    const preferences = mergePreferencesWithDefaults(defaults, overrides);
-    const quietHours = userExists
-      ? await this.repo.getUserQuietHours(request.userId)
-      : null;
+    const preferences = mergePreferencesWithSources(defaults, overrides);
+    const quietHours = await this.repo.getUserQuietHours(request.userId);
     const globalPolicies = await this.repo.getGlobalPolicies();
 
     const result = evaluateNotification(request, {
       preferences,
       quietHours,
       globalPolicies,
-      userExists,
+      userExists: true,
     });
 
     this.logger.info('Notification evaluate decision', {

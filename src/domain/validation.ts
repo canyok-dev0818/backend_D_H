@@ -3,10 +3,12 @@ import {
   NOTIFICATION_TYPES,
   REGIONS,
   type Channel,
+  type EvaluateRequest,
   type NotificationType,
   type Region,
   type UpdatePreferencesCommand,
 } from './types.js';
+import { isValidIanaTimezone, parseIsoInstant } from './datetime.js';
 import { typesMatchChannel } from './notification-meta.js';
 
 export function assertNotificationType(value: string): NotificationType {
@@ -28,6 +30,41 @@ export function assertRegion(value: string): Region {
     throw new ValidationError(`Unknown region: ${value}`);
   }
   return value as Region;
+}
+
+export function validateEvaluateRequest(body: unknown): EvaluateRequest {
+  if (!body || typeof body !== 'object') {
+    throw new ValidationError('Request body must be an object');
+  }
+  const b = body as Record<string, unknown>;
+
+  const userId = String(b.userId ?? '').trim();
+  if (!userId) {
+    throw new ValidationError('userId is required');
+  }
+
+  const notificationType = assertNotificationType(
+    String(b.notificationType ?? ''),
+  );
+  const channel = assertChannel(String(b.channel ?? ''));
+  if (!typesMatchChannel(notificationType, channel)) {
+    throw new ValidationError(
+      `notificationType ${notificationType} does not match channel ${channel}`,
+    );
+  }
+
+  const region = assertRegion(String(b.region ?? ''));
+  const datetime = String(b.datetime ?? '');
+  if (!datetime) {
+    throw new ValidationError('datetime is required');
+  }
+  try {
+    parseIsoInstant(datetime);
+  } catch {
+    throw new ValidationError('datetime must be valid ISO-8601');
+  }
+
+  return { userId, notificationType, channel, region, datetime };
 }
 
 export function validateUpdateCommand(
@@ -86,9 +123,7 @@ function parseQuietHours(value: unknown) {
   if (!timezone) {
     throw new ValidationError('quietHours.timezone is required');
   }
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone: timezone });
-  } catch {
+  if (!isValidIanaTimezone(timezone)) {
     throw new ValidationError(`Invalid timezone: ${timezone}`);
   }
   const start = String(q.start ?? '');

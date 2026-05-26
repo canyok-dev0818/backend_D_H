@@ -26,6 +26,11 @@ export interface PreferenceEntry {
   enabled: boolean;
 }
 
+/** Effective preference with origin: system default or user override */
+export interface PreferenceEntryWithSource extends PreferenceEntry {
+  source: 'default' | 'user';
+}
+
 export interface QuietHours {
   timezone: string;
   /** Local time HH:mm (24h) */
@@ -47,7 +52,7 @@ export interface GlobalPolicy {
 
 export interface UserPreferencesSnapshot {
   userId: string;
-  preferences: PreferenceEntry[];
+  preferences: PreferenceEntryWithSource[];
   quietHours: QuietHours | null;
 }
 

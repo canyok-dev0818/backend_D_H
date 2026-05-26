@@ -1,13 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import { PreferencesService } from '../application/preferences-service.js';
-import { ValidationError, validateUpdateCommand } from '../domain/validation.js';
 import {
-  assertChannel,
-  assertNotificationType,
-  assertRegion,
+  ValidationError,
+  validateEvaluateRequest,
+  validateUpdateCommand,
 } from '../domain/validation.js';
-import type { EvaluateRequest } from '../domain/types.js';
 import { randomUUID } from 'node:crypto';
+
+/** Assignment minimal REST API */
+export const API_ROUTES = {
+  getUserPreferences: 'GET /users/:id/preferences',
+  updateUserPreferences: 'POST /users/:id/preferences',
+  evaluate: 'POST /evaluate',
+} as const;
 
 export function registerRoutes(
   app: FastifyInstance,
@@ -61,24 +66,7 @@ export function registerRoutes(
 
   app.post('/evaluate', async (request, reply) => {
     try {
-      const body = request.body as Record<string, unknown>;
-      const evaluateRequest: EvaluateRequest = {
-        userId: String(body.userId ?? ''),
-        notificationType: assertNotificationType(
-          String(body.notificationType ?? ''),
-        ),
-        channel: assertChannel(String(body.channel ?? '')),
-        region: assertRegion(String(body.region ?? '')),
-        datetime: String(body.datetime ?? ''),
-      };
-
-      if (!evaluateRequest.userId) {
-        return reply.status(400).send({ error: 'userId is required' });
-      }
-      if (Number.isNaN(Date.parse(evaluateRequest.datetime))) {
-        return reply.status(400).send({ error: 'datetime must be valid ISO-8601' });
-      }
-
+      const evaluateRequest = validateEvaluateRequest(request.body);
       const result = await service.evaluate(evaluateRequest);
       return reply.send(result);
     } catch (err) {
@@ -87,6 +75,16 @@ export function registerRoutes(
       }
       throw err;
     }
+  });
+
+  app.get('/defaults', async (_request, reply) => {
+    const preferences = await service.getDefaultPreferences();
+    return reply.send({ preferences });
+  });
+
+  app.get('/policies', async (_request, reply) => {
+    const policies = await service.getGlobalPolicies();
+    return reply.send({ policies });
   });
 
   app.get('/health', async (_request, reply) => {
