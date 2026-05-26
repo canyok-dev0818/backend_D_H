@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Notification Preferences — Demo UI</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Notification Preferences Service</h1>
+      <p>Панель для проверки REST API: предпочтения, quiet hours, evaluate</p>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <label for="apiBase">API Base URL</label>
+        <input id="apiBase" type="url" value="" placeholder="http://localhost:3000" />
+
+        <label for="userId">User ID</label>
+        <input id="userId" type="text" value="demo-user" />
+
+        <div id="healthStatus" class="status-pill pending">Проверка…</div>
+        <button type="button" class="secondary" id="btnHealth" style="width:100%;margin-bottom:1rem">
+          Проверить /health
+        </button>
+
+        <nav>
+          <button type="button" class="nav-btn active" data-panel="preferences">Предпочтения</button>
+          <button type="button" class="nav-btn" data-panel="update">Изменить настройки</button>
+          <button type="button" class="nav-btn" data-panel="evaluate">Evaluate</button>
+          <button type="button" class="nav-btn" data-panel="system">Дефолты и политики</button>
+        </nav>
+
+        <div class="presets">
+          <h3>Быстрые сценарии</h3>
+          <button type="button" class="preset-btn" data-preset="new-user">1. Новый пользователь (GET)</button>
+          <button type="button" class="preset-btn" data-preset="disable-marketing">2. Отключить marketing email</button>
+          <button type="button" class="preset-btn" data-preset="quiet-hours">3. Quiet hours (Москва)</button>
+          <button type="button" class="preset-btn" data-preset="eval-eu-sms">4. Evaluate EU marketing_sms</button>
+          <button type="button" class="preset-btn" data-preset="eval-tx-email">5. Evaluate transactional email</button>
+        </div>
+      </aside>
+
+      <main>
+        <section id="panel-preferences" class="panel active">
+          <h2>GET /users/:id/preferences</h2>
+          <p class="hint">Текущие эффективные предпочтения (дефолты + переопределения + quiet hours).</p>
+          <div class="actions">
+            <button type="button" class="primary" id="btnGetPrefs">Загрузить предпочтения</button>
+          </div>
+          <div id="result-prefs" class="result" hidden>
+            <div class="result-header"><span class="code"></span><span class="time"></span></div>
+            <pre></pre>
+          </div>
+        </section>
+
+        <section id="panel-update" class="panel">
+          <h2>POST /users/:id/preferences</h2>
+          <p class="hint">Тело JSON: setPreference и/или quietHours. Заголовок Idempotency-Key обязателен для повторяемости.</p>
+          <div class="form-grid">
+            <div>
+              <label for="idempotencyKey">Idempotency-Key</label>
+              <input id="idempotencyKey" type="text" value="ui-cmd-1" />
+            </div>
+            <div>
+              <label for="postBody">Request body (JSON)</label>
+              <textarea id="postBody" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="primary" id="btnPostPrefs">Отправить POST</button>
+            <button type="button" class="secondary" id="btnFillSetPref">Шаблон: setPreference</button>
+            <button type="button" class="secondary" id="btnFillQuiet">Шаблон: quietHours</button>
+            <button type="button" class="secondary" id="btnFillBoth">Шаблон: оба поля</button>
+          </div>
+          <div id="result-update" class="result" hidden>
+            <div class="result-header"><span class="code"></span><span class="time"></span></div>
+            <pre></pre>
+          </div>
+        </section>
+
+        <section id="panel-evaluate" class="panel">
+          <h2>POST /evaluate</h2>
+          <p class="hint">Проверка возможности отправки уведомления. Ответ: decision allow/deny и reason.</p>
+          <div class="form-grid">
+            <div>
+              <label for="evalBody">Request body (JSON)</label>
+              <textarea id="evalBody" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="primary" id="btnEvaluate">Выполнить evaluate</button>
+          </div>
+          <div id="result-eval" class="result" hidden>
+            <div class="result-header"><span class="code"></span><span class="time"></span></div>
+            <pre></pre>
+          </div>
+        </section>
+
+        <section id="panel-system" class="panel">
+          <h2>Системные данные</h2>
+          <p class="hint">Дефолты для новых пользователей и глобальные политики по регионам.</p>
+          <div class="actions">
+            <button type="button" class="primary" id="btnDefaults">GET /defaults</button>
+            <button type="button" class="primary" id="btnPolicies">GET /policies</button>
+          </div>
+          <div id="result-system" class="result" hidden>
+            <div class="result-header"><span class="code"></span><span class="time"></span></div>
+            <pre></pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

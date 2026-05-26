@@ -39,6 +39,12 @@ npm run dev
 
 Сервис слушает `http://localhost:3000`.
 
+**Demo UI** (проверка API в браузере): [http://localhost:3000/](http://localhost:3000/)
+
+- статус `/health`
+- GET/POST предпочтений, POST `/evaluate`
+- быстрые сценарии из ТЗ (дефолты, marketing email, quiet hours, global policy)
+
 ### 4. Тесты
 
 Убедитесь, что PostgreSQL запущен (`docker compose up -d`).

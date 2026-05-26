@@ -3,6 +3,8 @@
 Базовый URL: `http://localhost:3000`  
 Формат: JSON (`Content-Type: application/json`)
 
+**Веб-UI для ручной проверки:** откройте [http://localhost:3000/](http://localhost:3000/) после `npm start`.
+
 ## 1. Получение предпочтений пользователя
 
 ```http

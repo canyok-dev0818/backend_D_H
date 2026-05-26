@@ -13,6 +13,7 @@ async function main() {
   try {
     await app.listen({ port, host: '0.0.0.0' });
     console.log(`Notification Preferences Service listening on :${port}`);
+    console.log(`Demo UI: http://localhost:${port}/`);
   } catch (err) {
     console.error(err);
     process.exit(1);
